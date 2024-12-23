@@ -1,2 +1,2 @@
-pwnlib
+pwntools
 argparse
