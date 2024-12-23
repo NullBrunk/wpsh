@@ -1,6 +1,6 @@
 <div align="center">
 
-# WPshell
+# wpsh
 
 [![My Skills](https://skillicons.dev/icons?i=python&theme=dark)](https://skillicons.dev)
   
