@@ -9,6 +9,7 @@
 ![repo size](https://img.shields.io/github/repo-size/NullBrunk/wpsh?style=for-the-badge)
 </div>
 
+![image](https://github.com/user-attachments/assets/18b9b71b-d43b-4578-8069-8e3bc7c9b7c3)
 
 
 This script allows you to exploit a WordPress instance to obtain a reverse shell. It requires the username and password of a valid WordPress administrator. Once authenticated, the script establishes a reverse shell, granting access to the remote instance.
