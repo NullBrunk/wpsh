@@ -13,7 +13,7 @@
 ## 🚀 Usage
 This script allows you to exploit a WordPress instance to obtain a reverse shell. It requires the username and password of a valid WordPress administrator. Once authenticated, the script establishes a reverse shell, granting access to the remote instance.
 
-![image](https://github.com/user-attachments/assets/2987fcb6-ff7f-45d3-a9fd-50c0d8b06046)
+![image](https://github.com/user-attachments/assets/9ca88ab5-b17b-43b2-8de0-cef9cc6c048c)
 
 
 ## ⚒️ Installation
