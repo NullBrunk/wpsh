@@ -190,8 +190,8 @@ def parse_args() -> tuple:
     parser.add_argument("-au", help="WordPress admin username", metavar="ADMIN_USER", required=True)
     parser.add_argument("-ap", help="WordPress admin password", metavar="ADMIN_PASS", required=True)
     
-    parser.add_argument("-i", help="your local ip for the reverse shell", metavar="IP", required=True)
-    parser.add_argument("-p", help="your local port for the reverse shell", metavar="PORT", required=True, type=int)
+    parser.add_argument("-i", help="Local ip for the reverse shell", metavar="IP", required=True)
+    parser.add_argument("-p", help="Local port for the reverse shell", metavar="PORT", required=True, type=int)
     args = parser.parse_args()
 
     if(not args.u.startswith("http")):
@@ -325,4 +325,3 @@ if __name__ == "__main__":
 
     target, wp_user, wp_pass = parse_args()
     main(target, wp_user, wp_pass)
-
