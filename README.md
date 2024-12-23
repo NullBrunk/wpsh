@@ -7,7 +7,7 @@
 ![repo size](https://img.shields.io/github/repo-size/NullBrunk/wpsh?style=for-the-badge)
 </div>
 
-![image](https://github.com/user-attachments/assets/bcecdcee-ca3c-4072-9b0c-7b8cb5e4f66d)
+![image](https://github.com/user-attachments/assets/ee08e463-3d4d-496c-baa3-9a1b1336fe9e)
 
 
 ## 🚀 Usage
