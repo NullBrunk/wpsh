@@ -1,6 +1,6 @@
 <div align="center">
 
-# WordPress Reverse Shell Exploit 
+# WPshell
 
 [![My Skills](https://skillicons.dev/icons?i=python&theme=dark)](https://skillicons.dev)
   
