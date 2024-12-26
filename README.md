@@ -12,7 +12,7 @@
 ## 🚀 Usage
 This script allows you to exploit a WordPress instance to obtain a reverse shell by editing the 404.php theme page. It requires the username and password of a valid WordPress administrator. Once authenticated, the script establishes a reverse shell, granting access to the remote instance.
 
-![wpshhelp](https://github.com/user-attachments/assets/80b0bedd-86f7-4251-8112-cf598c1b7794)
+![image](https://github.com/user-attachments/assets/8bc4a87a-495d-4db7-83a2-154bedb7265f)
 
 
 ## ⚒️ Installation
