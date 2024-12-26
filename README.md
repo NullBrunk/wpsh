@@ -9,7 +9,6 @@
 
 ![image](https://github.com/user-attachments/assets/33abe75d-2991-482b-826f-48df6d67240b)
 
-![image](https://github.com/user-attachments/assets/d6026914-74ea-4e4b-bf35-c698b6c11b9c)
 
 
 ## 🚀 Usage
